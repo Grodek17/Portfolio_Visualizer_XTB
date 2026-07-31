@@ -1,11 +1,41 @@
 import pandas as pd
 
+URL = "C:\\Users\\grode\\Desktop\\IKE_TEST.xlsx"
 ### series - 1d array in pandas, numbered
 prices = pd.Series(
     [252.40, 255.10, 249.80, 258.30],
     name="Close"
 )
 
+def CreateBuySellGraph():
+    #get xtb report data
+    df = pd.read_excel(URL,2, header=8)
+    df['Open time (UTC)'] = pd.to_datetime(df['Open time (UTC)'])
+    df['Open time (UTC)'] = df['Open time (UTC)'].dt.strftime('%Y-%m-%d')
+    print(df.head(3))
+
+    #ask for ticker name
+    print("found tickers: ")
+    TickerList = df['Ticker'].unique()
+    print(TickerList)
+    print("select ticker you want to visualise: ")
+    x = input()
+    if x in TickerList:
+        print("correct ticker - proceeding. . .")
+    else:
+        print("incorrect ticker, try again")
+        return
+
+    #filter df to contain only rows with the ticker
+    TickerDF = df[df['Ticker'] == x]
+    TickerDF = TickerDF.loc[:,['Ticker', 'Type', 'Open time (UTC)']]
+    TickerDF = TickerDF.iloc[1:]
+    print(TickerDF.head(5))
+    #todo error handling
+
+
+
+CreateBuySellGraph()
 '''
 ### useful operations
 print(prices)
@@ -22,46 +52,12 @@ print(prices_increased)
 
 '''
 dataframe - 2d array of data
-'''
-
-data = {
-    "Date": [
-        "2026-07-13",
-        "2026-07-14",
-        "2026-07-15",
-        "2026-07-16"
-    ],
-    "Ticker": [
-        "CDR.WA",
-        "CDR.WA",
-        "CDR.WA",
-        "CDR.WA"
-    ],
-    "Open": [
-        250.00,
-        253.50,
-        256.00,
-        251.00
-    ],
-    "Close": [
-        252.40,
-        255.10,
-        249.80,
-        258.30
-    ],
-    "Volume": [
-        650_000,
-        720_000,
-        810_000,
-        940_000
-    ]
-}
 
 df = pd.DataFrame(data)
 
 print(df)
 
-''' getting one series from dataframe '''
+#getting one series from dataframe 
 close_prices = df["Close"]
 print(close_prices)
 print(type(close_prices))
@@ -70,13 +66,14 @@ df["Close"]          # Series
 df[["Close"]]        # DataFrame
 df[["Date", "Close"]]  # DataFrame with two columns
 
-''' setting "natural" index '''
+#setting "natural" index
 df = df.set_index("Date")
 
 print(df)
 
 
-''' useful commands '''
+# useful commands 
 print(df.head()) #first five rows
 df.info()
 print(df.dtypes)
+'''
