@@ -1,4 +1,6 @@
 import pandas as pd
+import yfinance as yf
+import matplotlib.pyplot as plt
 
 URL = "C:\\Users\\grode\\Desktop\\IKE_TEST.xlsx"
 ### series - 1d array in pandas, numbered
@@ -12,7 +14,6 @@ def CreateBuySellGraph():
     df = pd.read_excel(URL,2, header=8)
     df['Open time (UTC)'] = pd.to_datetime(df['Open time (UTC)'])
     df['Open time (UTC)'] = df['Open time (UTC)'].dt.strftime('%Y-%m-%d')
-    print(df.head(3))
 
     #ask for ticker name
     print("found tickers: ")
@@ -30,8 +31,46 @@ def CreateBuySellGraph():
     TickerDF = df[df['Ticker'] == x]
     TickerDF = TickerDF.loc[:,['Ticker', 'Type', 'Open time (UTC)']]
     TickerDF = TickerDF.iloc[1:]
-    print(TickerDF.head(5))
+    print(TickerDF.head(8))
+    print("^ this is TickerDF ^ ")
     #todo error handling
+
+    #get instrument data from yahoo finance
+
+    ##
+    ## massive to do, this either have to be done for every country end note via dictionary or idk
+    yahoo_ticker = x.replace('.PL', '.WA')
+    ##
+
+    YahooDF = yf.download(
+    yahoo_ticker,
+    start = TickerDF['Open time (UTC)'].min(),
+    end = pd.Timestamp.today().strftime('%Y-%m-%d'),             #useful after we extract oldest transactions from XTB csv file
+    interval="1d",
+    auto_adjust=False,
+    multi_level_index=False,
+    progress=False
+    )
+    print(YahooDF.head(3))
+    YahooDF = YahooDF.loc[:,['Close']]
+    print(YahooDF.head(3))
+    print("^this is yahooDF ^")
+
+
+
+    #creating the graph
+    YahooDF = YahooDF.reset_index() #turns date into column and not an index
+    TickerDF['Open time (UTC)'] = pd.to_datetime(TickerDF['Open time (UTC)'])
+    TickerDF = TickerDF.merge(YahooDF, how='left', left_on='Open time (UTC)', right_on='Date')
+    print(TickerDF)
+
+    plt.figure(figsize=(12, 6))
+    plt.plot(YahooDF['Date'], YahooDF['Close'])
+    plt.scatter(TickerDF['Open time (UTC)'], TickerDF['Close'],marker='o',s=140,color='green',zorder=3)
+    plt.scatter(TickerDF['Open time (UTC)'], TickerDF['Close'],marker='+',s=70,color='white',linewidths=2,zorder=4)
+    plt.title(x)
+    plt.grid()
+    plt.show()
 
 
 
