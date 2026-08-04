@@ -2,12 +2,50 @@ import pandas as pd
 import yfinance as yf
 import matplotlib.pyplot as plt
 
+from dictionary import XTB_TO_YAHOO
+
 URL = "C:\\Users\\grode\\Desktop\\IKE_TEST.xlsx"
 ### series - 1d array in pandas, numbered
 prices = pd.Series(
     [252.40, 255.10, 249.80, 258.30],
     name="Close"
 )
+
+def updateTicker(ticker):
+    ticker = ticker.strip().upper()
+
+    symbol, separator, market = ticker.rpartition(".")
+    print(f"ticker: {ticker}, symbol: {symbol}, separator: {separator}, market: {market}")
+
+    if not separator:
+        return ticker
+
+    if market not in XTB_TO_YAHOO:
+        raise ValueError(
+            f"UNKNOWN XTB ENDING: {market!r} "
+            f"FOR TICKER {ticker!r}"
+        )
+
+    yahoo_suffix = XTB_TO_YAHOO[market]
+    print("zwracany yahoo suffix: ", yahoo_suffix)
+
+    return f"{symbol}{yahoo_suffix}"
+
+
+def GetStockInfo(ticker, startdate, enddate, data_interval="1d"):
+
+    ticker = updateTicker(ticker)
+
+    YahooDF = yf.download(
+    ticker,
+    start = startdate,
+    end = enddate,             #useful after we extract oldest transactions from XTB csv file
+    interval=data_interval,
+    auto_adjust=False,
+    multi_level_index=False,
+    progress=False
+    )
+    return YahooDF
 
 def CreateBuySellGraph():
     #get xtb report data
@@ -38,19 +76,8 @@ def CreateBuySellGraph():
     #get instrument data from yahoo finance
 
     ##
-    ## massive to do, this either have to be done for every country end note via dictionary or idk
-    yahoo_ticker = x.replace('.PL', '.WA')
-    ##
 
-    YahooDF = yf.download(
-    yahoo_ticker,
-    start = TickerDF['Open time (UTC)'].min(),
-    end = pd.Timestamp.today().strftime('%Y-%m-%d'),             #useful after we extract oldest transactions from XTB csv file
-    interval="1d",
-    auto_adjust=False,
-    multi_level_index=False,
-    progress=False
-    )
+    YahooDF = GetStockInfo(x, TickerDF['Open time (UTC)'].min(), pd.Timestamp.today().strftime('%Y-%m-%d'))
     print(YahooDF.head(3))
     YahooDF = YahooDF.loc[:,['Close']]
     print(YahooDF.head(3))
@@ -72,9 +99,13 @@ def CreateBuySellGraph():
     plt.grid()
     plt.show()
 
-
-
 CreateBuySellGraph()
+
+
+
+
+
+
 '''
 ### useful operations
 print(prices)
