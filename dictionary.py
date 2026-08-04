@@ -4,3 +4,7 @@ XTB_TO_YAHOO = {
     "DE" : ".DE",
     "UK" : ".L"
 }
+
+TICKER_EXCEPTIONS = {
+    "BRKB.US" : "BRK-B"
+}
