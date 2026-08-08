@@ -121,7 +121,7 @@ def CreateBuySellGraph():
     return
 
 
-#helper, prints percentage change of ticker in colours TODO: in which time interval
+#helper, prints percentage change of ticker in colours, probably will not be used in final program TODO: in which time interval
 def PrintPercentageChange(ticker, percentage_change):
         print("ticker: ", ticker, "% change (7 days):")
         if percentage_change >= 0:
@@ -131,7 +131,23 @@ def PrintPercentageChange(ticker, percentage_change):
 
 
 #calculates percentage change of asset value in given time interval, might not be full calendar interval since market closures
-def Give_Percentage_Change_In_Interval()
+def Give_Percentage_Change_In_Interval(today, close, interval_lenght, debug="False"):
+    
+    #get start and end dates in YYYY-MM-DD format
+    interval_beggining = (today - pd.Timedelta(days=interval_lenght)).strftime("%Y-%m-%d")
+    end_date = (today + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
+
+    chosen_interval = close.loc[interval_beggining:end_date]        #select data only from that interval
+    oldest = chosen_interval.iloc[0]                                #oldest data point
+    most_recent = chosen_interval.iloc[-1]
+    percentage_change = ((most_recent/oldest)-1) * 100
+    percentage_change = round(percentage_change, 2)
+
+    if debug == "True":
+        print("oldest: ", oldest)
+        print("most recent: ", most_recent)
+    
+    return percentage_change
 
 
 #returns table with changes over time in all companies listed in xtb profile
@@ -139,27 +155,42 @@ def Check_Price_Changes():
     df = Read_XTB_File(URL)
     tickers = Select_Ticker(df, mode="all")
 
+    summary_df = pd.DataFrame(
+    columns=["Ticker", "7D", "30D", "90D", "365D"]
+    )
+
     today = pd.Timestamp.today()
-    start_date = (today - pd.Timedelta(days=380)).strftime("%Y-%m-%d")
+    start_date = (today - pd.Timedelta(days=380)).strftime("%Y-%m-%d")          #TODO: needs rework when 1+ yrs interval
     end_date = (today + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
     for ticker in tickers:
         ticker_df = GetStockInfo(ticker, start_date, end_date)
-        close = ticker_df['Close']
+        close = ticker_df['Close'].dropna()                                     #remove most recent datapoint if its empty
 
         #TODO
-        seven_day_return = -1
-        thirty_day_return = -1
-        ninety_day_return = -1
-        one_year_return = -1
+        if ticker == "XTB.PL":
+            print("close df:")
+            print(close.head(5))
+            seven_day_return = Give_Percentage_Change_In_Interval(today, close, 7, debug="True")
+        else:
+            seven_day_return = Give_Percentage_Change_In_Interval(today, close, 7)
+        
+        thirty_day_return = Give_Percentage_Change_In_Interval(today, close, 30)
+        ninety_day_return = Give_Percentage_Change_In_Interval(today, close, 90)
+        one_year_return = Give_Percentage_Change_In_Interval(today, close, 365)
 
-        #7d
-        interval_beggining = (today - pd.Timedelta(days=7)).strftime("%Y-%m-%d")
-        chosen_interval = close.loc[interval_beggining:end_date]
-        oldest = chosen_interval.iloc[0]
-        most_recent = chosen_interval.iloc[-1]
-        percentage_change = ((most_recent/oldest)-1) * 100
-        PrintPercentageChange(ticker, percentage_change)
+        summary_df.loc[len(summary_df)] = {
+        "Ticker": ticker,
+        "7D": seven_day_return,
+        "30D": thirty_day_return,
+        "90D": ninety_day_return,
+        "365D": one_year_return
+        }
+
+    print(summary_df.to_markdown(index=False))
+
+
+
 
 
       
