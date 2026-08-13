@@ -7,6 +7,9 @@ from constants import URL, GREEN, RED, RESET
 from dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS
 from typing import Literal
 
+from benchmark_comparison import read_cash_operations, portfolio_benchmark
+from xtb_reader import Read_XTB_File
+
 
 
 
@@ -49,13 +52,9 @@ def GetStockInfo(ticker, startdate, enddate, data_interval="1d"):
     return YahooDF
 
 
-#reads XTB file and returns dataframe with transactions info TODO: make sure it works all the time
-def Read_XTB_File(URL_path):
-    df = pd.read_excel(URL_path, 2, header=8)                                   #TODO: remove magic numbers
-    df['Open time (UTC)'] = pd.to_datetime(df['Open time (UTC)'])               #datatype change
-    df['Open time (UTC)'] = df['Open time (UTC)'].dt.strftime('%Y-%m-%d')       #format change
 
-    return df
+
+    
 
 
 #returns single ticker from your portfolio or all of them in form of a list
@@ -88,7 +87,7 @@ def Select_Ticker(xtb_df, mode: Literal["single", "all"] = "single"):
 #returns chart of company value over time with buy points
 def CreateBuySellGraph():
     #get xtb report data
-    df = Read_XTB_File(URL)
+    df = Read_XTB_File(URL, 2)
     x = Select_Ticker(df, mode="single")
 
 
@@ -152,7 +151,7 @@ def Give_Percentage_Change_In_Interval(today, close, interval_lenght, debug="Fal
 
 #returns table with changes over time in all companies listed in xtb profile
 def Check_Price_Changes():
-    df = Read_XTB_File(URL)
+    df = Read_XTB_File(URL, 2)
     tickers = Select_Ticker(df, mode="all")
 
     summary_df = pd.DataFrame(
@@ -196,8 +195,9 @@ def Check_Price_Changes():
       
 
 #CreateBuySellGraph()
-Check_Price_Changes()
-
+#Check_Price_Changes()
+#read_cash_operations()
+portfolio_benchmark(URL)
 
 
 
