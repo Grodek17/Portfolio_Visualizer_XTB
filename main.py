@@ -7,7 +7,7 @@ from constants import URL, GREEN, RED, RESET
 from dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS
 from typing import Literal
 
-from benchmark_comparison import read_cash_operations, portfolio_benchmark
+from benchmark_comparison import read_cash_operations, portfolio_benchmark, show_dividends_yearly
 from xtb_reader import Read_XTB_File
 
 
@@ -197,7 +197,8 @@ def Check_Price_Changes():
 #CreateBuySellGraph()
 #Check_Price_Changes()
 #read_cash_operations()
-portfolio_benchmark(URL)
+#portfolio_benchmark(URL)
+show_dividends_yearly(URL)
 
 
 
