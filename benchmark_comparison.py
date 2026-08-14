@@ -1,5 +1,6 @@
 #TODO: selling stocks
 import pandas as pd
+import matplotlib.pyplot as plt
 
 from constants import URL
 from dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS, XTB_TO_CURRENCY
@@ -66,6 +67,7 @@ def define_ticker_currency(ticker):
 
     return position_currency
 
+
 #helper function, reads all transaction from given day in dataframe, updates stocks volumes and average prices[different currencies], and total money invested [pln]
 def read_all_transactions_from_this_day(today_transactions, positions, total_dividends, total_invested):
 
@@ -99,8 +101,7 @@ def read_all_transactions_from_this_day(today_transactions, positions, total_div
     return positions, total_dividends, total_invested
 
                 
-
-
+#compares your pucharses with theoretical parallel benchmmark pucharses (e.g. SP500, NASDAQ100) to check if you are "beating" popular ETF's with your picks
 def portfolio_benchmark(url):
     positions = {}
     total_dividends = 0
@@ -134,17 +135,65 @@ def portfolio_benchmark(url):
         break
 
         #sum all money spend in another datapoint for = "total invested -> used in return and "buying benchmarks"
-        #TODO: currencies of positions, 
+        #TODO: currencies of positions,   DONE (kind of)
         #TODO: (later) buying benchmarks at same time as other positions
         #TODO: calculating daily return as (portfolio value [changed to pln] + dividends)/(total invested[already in pln])   
         #TODO: if at least one position gives N/A, do not calculate return
 
 
+#shows bargraph of paid dividends each year
+def show_dividends_yearly(url):
+    yearly_amounts = {}
 
-    '''
-    comment = "BUY 6 PZU.PL at 40.50 PLN"
+    dividend_types = [
+        "Dividend",
+        "Dividend from foreign company on PL market",
+        "Tax from dividend from foreign company on PL market",
+        "Withholding tax"
+    ]
 
-    parts = comment.split()
+    positions = {}
+    total_dividends = 0
+    total_invested = 0
+    df = read_cash_operations(url)
+    
+    #get oldest operation date - beggining of our benchmarking
+    startDate = df['Time'].iloc[-1]
+    
+    
+    
+    #go through each day and check operations
+    start_date = pd.to_datetime(df["Time"]).min()
+    end_date = pd.Timestamp.today().normalize()
+    df["Time"] = pd.to_datetime(df["Time"])
+    
+    for index, transaction in  df.iterrows():
+        type = transaction['Type']
+        time = transaction['Time']
+        amount = transaction['Amount']
+        
+            
+        if type in dividend_types:
+            total_dividends += amount
+            time_year = transaction['Time'].year
 
-    print(parts)
-    '''
+            if time_year not in yearly_amounts:
+                yearly_amounts[time_year] = 0
+            yearly_amounts[time_year] = yearly_amounts[time_year] + amount
+
+    dividend_df = pd.DataFrame(yearly_amounts.items(), columns=["year", "total_amount"])
+
+    dividend_df.plot(
+    x="year",
+    y="total_amount",
+    kind="bar",
+    legend=False
+    )
+
+    plt.xlabel("Year")
+    plt.ylabel("Dividends this year")
+    plt.title("Dividends by year")
+    plt.xticks(rotation=0)
+    plt.tight_layout()
+    plt.show()
+
