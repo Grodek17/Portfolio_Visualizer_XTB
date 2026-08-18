@@ -12,6 +12,13 @@ XTB_TO_CURRENCY = {
     "UK" : "GBP"
 }
 
+CURRENCY_TICKERS = {
+    "EUR": "EURPLN=X",
+    "USD": "USDPLN=X",
+    "GBP": "GBPPLN=X",
+    "PLN": None
+}
+
 TICKER_EXCEPTIONS = {
     "BRKB.US" : "BRK-B"
 }
