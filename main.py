@@ -8,33 +8,13 @@ from dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS
 from typing import Literal
 
 from benchmark_comparison import read_cash_operations, portfolio_benchmark, show_dividends_yearly
-from xtb_reader import Read_XTB_File
+from xtb_reader import Read_XTB_File, updateTicker
+from asset_class import Asset
 
 
 
 
-#helper function, replace xtb endings to yahoo compatible (e.g. PKN.PL -> PKN.WA, NVDA.US -> NVDA)
-def updateTicker(ticker):
-    ticker = ticker.strip().upper()
 
-    symbol, separator, market = ticker.rpartition(".")
-
-    #exception handling for unexceptional ticker names
-    if ticker in TICKER_EXCEPTIONS:
-        return TICKER_EXCEPTIONS[ticker]
-
-    if not separator:
-        return ticker
-
-    if market not in XTB_TO_YAHOO:
-        raise ValueError(
-            f"UNKNOWN XTB ENDING: {market!r} "
-            f"FOR TICKER {ticker!r}"
-        )
-
-    yahoo_suffix = XTB_TO_YAHOO[market]
-
-    return f"{symbol}{yahoo_suffix}"
 
 
 #get dataframe from yahooFinance with company/etf info
@@ -198,7 +178,48 @@ def Check_Price_Changes():
 #Check_Price_Changes()
 #read_cash_operations()
 #portfolio_benchmark(URL)
-show_dividends_yearly(URL)
+#show_dividends_yearly(URL)
+
+#test1()
+
+
+#get dataframe from yahooFinance with company/etf info
+def GetStockInfo_for_asset(ticker, startdate, enddate, data_interval="1d"):
+    ticker = updateTicker(ticker)
+    YahooDF = yf.download(
+    ticker,
+    start = startdate,
+    end = enddate,             #useful after we extract oldest transactions from XTB csv file
+    interval=data_interval,
+    auto_adjust=False,
+    multi_level_index=False,
+    progress=False
+    )
+
+    #add missing days - weekends and days when stock exchange is closed
+    all_days = pd.date_range(start=startdate, end=enddate, freq="D",)
+    YahooDF = YahooDF.reindex(all_days)
+    print("tbd")
+
+    #fill missing values with previous data
+    YahooDF = YahooDF.ffill()
+    #if there is no previous data, fill it with further one
+    YahooDF = YahooDF.bfill()
+
+    # TODO: Avoid initial bfill future bias by extending the date range backwards.
+    # Low priority for a graphical, long-term investing tool.
+
+    #trim dataframe to contain only date and price
+    YahooDF = YahooDF['Close']
+
+    #return
+    return YahooDF
+
+
+
+
+df = Asset("NVDA.US", "2026-08-01", "2026-08-18")
+df.print_df()
 
 
 
