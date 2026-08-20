@@ -2,6 +2,7 @@ import yfinance as yf
 import pandas as pd
 
 #TODO: when this will become main method for gathering Yf data, update ticker might become "insider" method of Asset class
+#TODO: error handling for pulling nonexistent "future data", nonexistent past data etc
 from xtb_reader import updateTicker
 
 # Asset Class will contain information about asset such as name, ticker etc. and a dataFrame with all closing values in given period of time
@@ -13,10 +14,10 @@ class Asset:
         self.xtb_ticker = xtb_ticker
         self.startDate = startDate
         self.endDate = endDate
-        self.yahoo_ticker, self.currency, self.longName, self.price_df = self.get_yf_info(self.xtb_ticker, self.startDate, self.endDate)
+        self.yahoo_ticker, self.currency, self.longName, self.price_df = self.download_yf_info(self.xtb_ticker, self.startDate, self.endDate)
 
 
-    def get_yf_info(self, xtb_ticker, startdate, enddate, data_interval="1d"):
+    def download_yf_info(self, xtb_ticker, startdate, enddate, data_interval="1d"):
         #TODO: check debugging, fill NA's + error handling, provide ready to use clean dataframe (date, close/adj close)
         yahoo_ticker = updateTicker(xtb_ticker)
         YahooDF = yf.download(
@@ -55,9 +56,21 @@ class Asset:
 
         return yahoo_ticker, currency, long_name, YahooDF
 
+        
+
 
     def print_df(self):
         print(self.price_df)
 
-    def __str__(self):
-        return f"MyClass(name={self.name}, value={self.value})"
+    #get closing price of a asset on a specific day
+    def get_price_of_day(self, day):
+        return self.price_df.loc[day]
+
+    def get_currency(self):
+        return self.currency
+
+    def get_long_name(self):
+        return self.longName
+
+    def get_yahoo_ticker(self):
+        return self.yahoo_ticker
