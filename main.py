@@ -177,52 +177,22 @@ def Check_Price_Changes():
 #CreateBuySellGraph()
 #Check_Price_Changes()
 #read_cash_operations()
-#portfolio_benchmark(URL)
+portfolio_benchmark(URL)
 #show_dividends_yearly(URL)
 
-#test1()
 
 
-#get dataframe from yahooFinance with company/etf info
-def GetStockInfo_for_asset(ticker, startdate, enddate, data_interval="1d"):
-    ticker = updateTicker(ticker)
-    YahooDF = yf.download(
-    ticker,
-    start = startdate,
-    end = enddate,             #useful after we extract oldest transactions from XTB csv file
-    interval=data_interval,
-    auto_adjust=False,
-    multi_level_index=False,
-    progress=False
-    )
-
-    #add missing days - weekends and days when stock exchange is closed
-    all_days = pd.date_range(start=startdate, end=enddate, freq="D",)
-    YahooDF = YahooDF.reindex(all_days)
-    print("tbd")
-
-    #fill missing values with previous data
-    YahooDF = YahooDF.ffill()
-    #if there is no previous data, fill it with further one
-    YahooDF = YahooDF.bfill()
-
-    # TODO: Avoid initial bfill future bias by extending the date range backwards.
-    # Low priority for a graphical, long-term investing tool.
-
-    #trim dataframe to contain only date and price
-    YahooDF = YahooDF['Close']
-
-    #return
-    return YahooDF
-
-
-
-
+'''
 df = Asset("NVDA.US", "2026-08-01", "2026-08-18")
 df.print_df()
+print("-----")
+price = df.get_price_of_day("2026-08-02")
+currency = df.get_currency()
+long = df.get_long_name()
+yahoo_tic = df.get_yahoo_ticker()
 
-
-
+print(f'{yahoo_tic} ({long}) {currency} {price}')
+'''
 
 
 '''

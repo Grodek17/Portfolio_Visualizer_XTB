@@ -9,7 +9,8 @@ XTB_TO_CURRENCY = {
     "PL" : "PLN",
     "US" : "USD",
     "DE" : "EUR",
-    "UK" : "GBP"
+    "UK" : "GBP",
+    "L"  : "USD"        #TODO: this doesn't have to be a rule
 }
 
 CURRENCY_TICKERS = {

@@ -2,9 +2,12 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
+import sys
 
 from constants import URL
 from dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS, XTB_TO_CURRENCY, CURRENCY_TICKERS
+
+from asset_class import Asset
 
 from xtb_reader import Read_XTB_File, updateTicker
 
@@ -14,7 +17,6 @@ class Position:
         self.ticker = ticker
         self.volume = 0
         self.avg_price = 0
-        self.currency = define_ticker_currency(ticker)
 
     def add_pucharse(self, bought_vol, bought_price):
         if bought_vol <= 0:
@@ -61,26 +63,6 @@ def parse_open_transaction(comment):
     return bought_volume, price
 
 
-#helper function, replace xtb endings to yahoo compatible (e.g. PKN.PL -> PKN.WA, NVDA.US -> NVDA)
-def define_ticker_currency(ticker):
-    ticker = ticker.strip().upper()
-
-    symbol, separator, market = ticker.rpartition(".")
-
-    if not separator:
-        raise ValueError(ticker, "ticker has no country prefix, unable to determine currency")
-
-    if market not in XTB_TO_CURRENCY:
-        raise ValueError(
-            f"UNKNOWN XTB ENDING: {market!r} "
-            f"FOR TICKER {ticker!r}"
-        )
-
-    position_currency = XTB_TO_CURRENCY[market]
-
-    return position_currency
-
-
 #helper function, reads all transaction from given day in dataframe, updates stocks volumes and average prices[different currencies], and total money invested [pln]
 def read_all_transactions_from_this_day(today_transactions, positions, total_dividends, total_invested):
 
@@ -94,7 +76,6 @@ def read_all_transactions_from_this_day(today_transactions, positions, total_div
     for index, transaction in  today_transactions.iterrows():
         type = transaction['Type']
         ticker = transaction['Ticker']
-        time = transaction['Time']
         comment = transaction['Comment']
         amount = transaction['Amount']
     
@@ -201,27 +182,107 @@ def plot_benchmarks(portfolio_returns):
     plt.show()
     
     
-       
+#download all data across whole "benchmarking time frame", for easier and quicker access in the future
+def get_yahoo_price_data(transactions, start_date, end_date):
+
+    # {xtb_ticker : class with all the data}
+    asset_dict = {}     
+    start_date = start_date.strftime('%Y-%m-%d') 
+    end_date = end_date.strftime('%Y-%m-%d') 
+
+    tickers = transactions['Ticker'].unique()
+
+    for ticker in tickers:
+        asset_dict[ticker] = Asset(ticker, start_date, end_date)
+
+    return asset_dict
+
+
+def download_yf_exchange_rates(ticker, startdate, enddate, data_interval="1d"):
+    YahooDF = yf.download(
+    ticker,
+    start = startdate,
+    end = enddate,             
+    interval=data_interval,
+    auto_adjust=False,
+    multi_level_index=False,
+    progress=False
+    )
+
+    #add missing days - weekends and days when stock exchange is closed
+    all_days = pd.date_range(start=startdate, end=enddate, freq="D",)
+    YahooDF = YahooDF.reindex(all_days)
+        
+
+    #fill missing values with previous data
+    YahooDF = YahooDF.ffill()
+    #if there is no previous data, fill it with further one
+    YahooDF = YahooDF.bfill()
+
+    # TODO: Avoid initial bfill future bias by extending the date range backwards.
+    # Low priority for a graphical, long-term investing tool.
+    #TODO: error handling for dates after today
+
+    #trim dataframe to contain only date and price
+    YahooDF = YahooDF['Close']
+
+    return YahooDF
+    
+#
+def get_exchange_rates_data(start_date, end_date, assets):
+    start_date = start_date.strftime('%Y-%m-%d') 
+    end_date = end_date.strftime('%Y-%m-%d')
+    currencies = []
+    exchange_rates = {}
+    for ticker, asset in assets.items():
+        currencies.append(asset.get_currency())
+
+    currencies = list(set(currencies))
+
+    for currency in currencies:
+        #no exchange rate for PLN
+        if currency == "PLN":
+            all_days = pd.date_range(start_date, end_date, freq="D")
+            exchange_rates[currency] = pd.Series(1.0, index=all_days, name="Close")
+            continue
+
+        #get currency prefix (e.g. USD -> USDPLN=X)
+        yahoo_ticker = CURRENCY_TICKERS[currency]
+        exchange_rates[currency] = download_yf_exchange_rates(yahoo_ticker, start_date, end_date)
+
+    return exchange_rates
+
+
 
 
 #compares your pucharses with theoretical parallel benchmmark pucharses (e.g. SP500, NASDAQ100) to check if you are "beating" popular ETF's with your picks
 # Current limitation: portfolio operations are assumed
 # to be settled from a PLN-denominated account.
 def portfolio_benchmark(url):
-    positions = {}                      #dictionary of position classes and their corresponding tickers
+    positions = {}                                                  #stores {xtb ticker : class storing (volume, avg_price, currency)}
+    assets = {}                                                     #stores {xtb_ticker : class storing asset info (name, ticker, dataframe with historical prices)}
+    exchange_rates = {}                                             #stores {currency_ticker : exchange_rate series}
     daily_returns = {}
     total_dividends = 0
     total_invested = 0
-    df = read_cash_operations(url)      #get list of all transactions on the account
 
-    #go through each day and check operations
+    df = read_cash_operations(url)                                  #downloads all cash operations from xtb report (stock pucharse, divident payout etc.)
+
     start_date = pd.to_datetime(df["Time"]).min()
     end_date = pd.Timestamp.today().normalize()
 
+    assets = get_yahoo_price_data(df, start_date, end_date)         #download historical price data & metadata for every ticker in xtb report
+    exchange_rates = get_exchange_rates_data(start_date, end_date, assets)
+    print("==== DEBUG ====")
+    print(exchange_rates.keys())
+    print("==== DEBUG ====")
+
+    #calculate portfolio value and report changes for every day of an timeframe
     for day in pd.date_range(start=start_date, end=end_date, freq="D"):
         day = day.strftime('%Y-%m-%d') 
+        print(day)
 
-        #get all transactions in this day
+        #get all transactions in current day
         today_transactions = df.loc[df["Time"] == day]
 
         #update all stocks volumes and prices accordingly
@@ -231,14 +292,14 @@ def portfolio_benchmark(url):
         today_portfolio_value = 0
         for ticker, position in positions.items():
             position_volume = position.getVolume()
-            position_currency = position.getCurrency()
-            position_exchange_rate = get_exchange_rate(position_currency, day)
-            position_price_most_recent = get_position_price(ticker, day)
+            position_currency = assets[ticker].get_currency()
+            position_exchange_rate = exchange_rates[position_currency].loc[day]
+            position_price_most_recent = assets[ticker].get_price_of_day(day)
 
             position_value_this_day = position_volume * position_price_most_recent * position_exchange_rate
             today_portfolio_value = today_portfolio_value + position_value_this_day
              
-        this_day_return_rate_in_percent = (((today_portfolio_value)/(total_invested))-1) * 100
+        this_day_return_rate_in_percent = (((today_portfolio_value)/(total_invested))-1) 
         return_rate = round(this_day_return_rate_in_percent, 2)
 
         daily_returns[day] = return_rate
@@ -248,9 +309,6 @@ def portfolio_benchmark(url):
         #TODO: currencies of positions,   DONE (kind of)
         #TODO: pucharses should log exchange rate of foreign currency by days, so rates flunctuations do not affect profit ratios
         #TODO: (later) buying benchmarks at same time as other positions
-        #TODO: calculating daily return as (portfolio value [changed to pln] + dividends)/(total invested[already in pln])   
-        #TODO: if at least one position gives N/A, do not calculate return
-        #TODO: possible optimalisation, downloading and storing company dataframes once instead downloading every calculation
     
     plot_benchmarks(daily_returns)
 
