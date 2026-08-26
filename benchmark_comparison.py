@@ -147,36 +147,40 @@ def get_position_price(ticker, day):
 
 
 #
-def plot_benchmarks(portfolio_returns):
-    portfolio_df = pd.DataFrame(portfolio_returns.items(),columns=["day", "return_rate"])
+def plot_benchmarks(returns_df):
+    returns_df = returns_df.copy()
 
-    portfolio_df["day"] = pd.to_datetime(portfolio_df["day"])
-    portfolio_df = portfolio_df.sort_values("day")
+    returns_df["Date"] = pd.to_datetime(returns_df["Date"])
+    returns_df = returns_df.sort_values("Date")
 
     fig, ax = plt.subplots(figsize=(12, 6))
 
-    ax.plot(
-        portfolio_df["day"],
-        portfolio_df["return_rate"] * 100,
-        label="Portfolio",
-        linewidth=2
-    )
+    return_columns = returns_df.columns.drop("Date")
+
+    for column in return_columns:
+        ax.plot(
+            returns_df["Date"],
+            returns_df[column] * 100,
+            label=column,
+            linewidth=2 if column == "Portfolio" else 1.5,
+        )
 
     ax.axhline(
         y=0,
         color="black",
         linewidth=1,
-        alpha=0.5
+        alpha=0.5,
     )
 
     ax.set_xlabel("Date")
     ax.set_ylabel("Return rate [%]")
-    ax.set_title("Portfolio return over time")
+    ax.set_title("Portfolio vs parallel benchmark investments")
     ax.legend()
     ax.grid(alpha=0.3)
 
     fig.autofmt_xdate()
-    plt.tight_layout()
+    fig.tight_layout()
+
     plt.show()
 
 
@@ -265,6 +269,10 @@ def get_exchange_rates_data(start_date, end_date, positions_data):
 
 
 def update_benchmark_positions(invested_today, benchmarks_positions, benchmarks_data, day, exchange_rates):
+    #skip if there were no pucharses this day
+    if invested_today == 0:
+        return benchmarks_positions
+    
     for ticker, key in benchmarks_positions.items():
         #get position price for the day
         position_price = benchmarks_data[ticker].get_price_of_day(day)
@@ -281,16 +289,56 @@ def update_benchmark_positions(invested_today, benchmarks_positions, benchmarks_
     return benchmarks_positions
 
 
+# calculates portfolio and benchmark return rates each day
+# returns a dictionary { day : date, portfolio : return_rate, bench_1 : bench_rr, ...}
+def calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchmarks_data, exchange_rates, total_invested, positions, positions_data):
+    #assign date to dictionary
+    daily_returns['Date'] = day
+
+    #PORTFOLIO
+    today_portfolio_value = 0
+    for ticker, position in positions.items():
+        position_volume = position.getVolume()
+        position_currency = positions_data[ticker].get_currency()
+        position_exchange_rate = exchange_rates[position_currency].loc[day]
+        position_price_most_recent = positions_data[ticker].get_price_of_day(day)
+    
+        position_value_this_day = position_volume * position_price_most_recent * position_exchange_rate
+        today_portfolio_value = today_portfolio_value + position_value_this_day
+                 
+    this_day_return_rate_in_percent = (((today_portfolio_value)/(total_invested))-1) 
+    return_rate_portfolio = this_day_return_rate_in_percent
+    daily_returns['Portfolio'] = return_rate_portfolio
+
+    #BENCHMARKS
+    for ticker in benchmarks_positions:
+        ticker = benchmarks_positions[ticker].getTicker()
+        volume = benchmarks_positions[ticker].getVolume()
+        currency = benchmarks_data[ticker].get_currency()
+        todays_price = benchmarks_data[ticker].get_price_of_day(day)
+        benchmark_exchange_rate = exchange_rates[currency].loc[day]
+
+        benchmark_today_value = volume * todays_price * benchmark_exchange_rate
+        return_rate_benchmark = (((benchmark_today_value)/(total_invested))-1) 
+        daily_returns[ticker] = return_rate_benchmark
+
+    
+
+    return daily_returns
+
+            
+    
 #compares your pucharses with theoretical parallel benchmmark pucharses (e.g. SP500, NASDAQ100) to check if you are "beating" popular ETF's with your picks
 # Current limitation: portfolio operations are assumed
 # to be settled from a PLN-denominated account.
 def portfolio_benchmark(url):
     positions = {}                                                  #stores {xtb ticker : class storing (volume, avg_price, currency)}
-    benchmarks_positions = {}                                       #stores {yahoo_ticker : class storing (volume, avg_price, currency)}
+    benchmarks_positions = {}                                       #stores {yahoo_ticker : class(Position) storing (volume, avg_price, currency)}
     positions_data = {}                                             #stores {xtb_ticker : class storing asset info (name, ticker, dataframe with historical prices)}
     benchmarks_data = {}                                            #stores {yahoo_ticker : class storing asset info}
     exchange_rates = {}                                             #stores {currency_ticker : exchange_rate series}
-    daily_returns = {}                                              #stores {day : portfolio value}
+    daily_returns = {}                                              #stores { day : date, portfolio : return_rate, bench_1 : bench_rr, ...}
+    returns_list = []                                               #stores list of daily_returns
     total_dividends = 0
     total_invested = 0
 
@@ -305,6 +353,7 @@ def portfolio_benchmark(url):
 
     #calculate portfolio value and report changes for every day of an timeframe
     for day in pd.date_range(start=start_date, end=end_date, freq="D"):
+        daily_returns = {}      #clear dictionary for current day
         invested_today = 0
         day = day.strftime('%Y-%m-%d') 
 
@@ -316,32 +365,18 @@ def portfolio_benchmark(url):
 
         #parallely buy benchmarks
         benchmarks_positions = update_benchmark_positions(invested_today, benchmarks_positions, benchmarks_data, day, exchange_rates)
-
-        #TODO: return rates for benchmarks + adding all data in dict, or list
-
-        #at the end of each day, calculate "todays value of portfolio, by summing volumes and todays prices"
-        today_portfolio_value = 0
-        for ticker, position in positions.items():
-            position_volume = position.getVolume()
-            position_currency = positions_data[ticker].get_currency()
-            position_exchange_rate = exchange_rates[position_currency].loc[day]
-            position_price_most_recent = positions_data[ticker].get_price_of_day(day)
-
-            position_value_this_day = position_volume * position_price_most_recent * position_exchange_rate
-            today_portfolio_value = today_portfolio_value + position_value_this_day
-             
-        this_day_return_rate_in_percent = (((today_portfolio_value)/(total_invested))-1) 
-        return_rate = this_day_return_rate_in_percent
-
-        daily_returns[day] = return_rate
         
+        daily_returns = calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchmarks_data, exchange_rates, total_invested, positions, positions_data)
+        returns_list.append(daily_returns)
 
-        #sum all money spend in another datapoint for = "total invested -> used in return and "buying benchmarks"
-        #TODO: currencies of positions,   DONE (kind of)
-        #TODO: pucharses should log exchange rate of foreign currency by days, so rates flunctuations do not affect profit ratios
-        #TODO: (later) buying benchmarks at same time as other positions
-    
-    plot_benchmarks(daily_returns)
+    returns_df = pd.DataFrame(returns_list)
+
+    #TODO: transform column names to long names of companies
+    # useful: first two columns are date and portfolio, rest can be found with Asset classes
+    # probably tag if returns need to come with full names or xtb ticker like ColumnNames=Full/Ticker
+    # check if modularity can be used to calculate for example percentage holding of each asset in portfolio
+
+    plot_benchmarks(returns_df)
 
 
 #helper plotting function
