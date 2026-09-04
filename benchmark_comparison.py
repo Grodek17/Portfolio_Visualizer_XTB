@@ -7,41 +7,14 @@ import sys
 from dictionary import CURRENCY_TICKERS, BENCHMARK_XTB_TICKERS
 
 from asset_class import Asset
-
+from position_class import Position
 from xtb_reader import Read_XTB_File, updateTicker
 
-
-class Position:
-    def __init__(self, ticker):
-        self.ticker = ticker
-        self.volume = 0
-        self.avg_price = 0
-
-    def add_pucharse(self, bought_vol, bought_price):
-        if bought_vol <= 0:
-            raise ValueError("Bought volume must be greater than 0")
-
-        if bought_price < 0:
-            raise ValueError("Bought price cannot be negative")
-        
-        new_volume = self.volume + bought_vol
-        new_avg = ((self.volume * self.avg_price)+(bought_vol*bought_price))/(self.volume + bought_vol)
-        self.volume = new_volume
-        self.avg_price = new_avg
-
-    def getVolume(self):
-        return self.volume
-
-    def getTicker(self):
-        return self.ticker
-
-    def getAvgPrice(self):
-        return self.avg_price
 
 
 
 def read_cash_operations(url):
-    df = Read_XTB_File(url, 1)
+    df = Read_XTB_File(url, 'Cash Operations')
     df = df.rename(columns={df.columns[0]: 'Type'})                 #change name of first column from " " to 'Type'
 
     df = df.loc[:,['Type', 'Ticker','Time','Amount','Comment']]
@@ -91,59 +64,6 @@ def read_all_transactions_from_this_day(today_transactions, positions, total_div
             total_dividends += amount
 
     return positions, total_dividends, total_invested, invested_today
-
-
-#helper function, gets currency value for each day
-def get_exchange_rate(currency, day):
-    if currency == "PLN":
-        return 1.0
-
-    day = pd.Timestamp(day)
-
-    data = yf.download(
-        CURRENCY_TICKERS[currency],
-        start=day - pd.Timedelta(days=7),
-        end=day + pd.Timedelta(days=1),
-        interval="1d",
-        progress=False,
-        auto_adjust=False,
-        multi_level_index=False
-    )
-
-    data = data.dropna(subset=["Close"]).sort_index()
-
-    if data.empty:
-        raise ValueError(
-            f"No exchange rate found for {currency} on or before {day.date()}"
-        )
-
-    return float(data["Close"].iloc[-1])
-
-
-def get_position_price(ticker, day):
-    ticker = updateTicker(ticker)
-    day = pd.Timestamp(day)
-
-    yahoo_df = yf.download(
-        ticker,
-        start=day - pd.Timedelta(days=7),
-        end=day + pd.Timedelta(days=1),
-        interval="1d",
-        auto_adjust=False,
-        multi_level_index=False,
-        progress=False
-    )
-
-    yahoo_df = yahoo_df.dropna(subset=["Close"])
-
-    if yahoo_df.empty:
-        raise ValueError(
-            f"No price data found for {ticker} before {day.date()}"
-        )
-
-    most_recent_value = yahoo_df["Close"].iloc[-1]
-
-    return float(most_recent_value)
 
 
 #
@@ -352,6 +272,7 @@ def portfolio_benchmark(url):
     exchange_rates = get_exchange_rates_data(start_date, end_date, positions_data)
 
     #calculate portfolio value and report changes for every day of an timeframe
+    print("calculating daily returns, it might take up to few minutes")
     for day in pd.date_range(start=start_date, end=end_date, freq="D"):
         daily_returns = {}      #clear dictionary for current day
         invested_today = 0
@@ -379,99 +300,6 @@ def portfolio_benchmark(url):
     plot_benchmarks(returns_df)
 
 
-#helper plotting function
-def plot_dividends(yearly_amounts, company_amounts):
-    dividend_df = pd.DataFrame(
-    yearly_amounts.items(),
-    columns=["year", "total_amount"]
-    )
-
-    dividend_company_df = pd.DataFrame(
-        company_amounts.items(),
-        columns=["company", "total_amount"]
-    )
-
-    fig, axes = plt.subplots(
-        nrows=1,
-        ncols=2,
-        figsize=(14, 5)
-    )
-
-    dividend_df.plot(
-        x="year",
-        y="total_amount",
-        kind="bar",
-        legend=False,
-        ax=axes[0]
-    )
-
-    axes[0].set_xlabel("Year")
-    axes[0].set_ylabel("Dividends")
-    axes[0].set_title("Dividends by year")
-    axes[0].tick_params(axis="x", rotation=0)
-
-    dividend_company_df.plot(
-        x="company",
-        y="total_amount",
-        kind="bar",
-        legend=False,
-        ax=axes[1]
-    )
-
-    axes[1].set_xlabel("Company")
-    axes[1].set_ylabel("Dividends")
-    axes[1].set_title("Dividends by company")
-    axes[1].tick_params(axis="x", rotation=45)
-
-    plt.tight_layout()
-    plt.show()
 
 
-#shows bargraph of paid dividends each year
-def show_dividends_yearly(url):
-    yearly_amounts = {}
-    company_amounts = {}
-
-    dividend_types = [
-        "Dividend",
-        "Dividend from foreign company on PL market",
-        "Tax from dividend from foreign company on PL market",
-        "Withholding tax"
-    ]
-
-    positions = {}
-    total_dividends = 0
-    total_invested = 0
-    df = read_cash_operations(url)
-    
-    #get oldest operation date - beggining of our benchmarking
-    startDate = df['Time'].iloc[-1]
-    
-    
-    
-    #go through each day and check operations
-    start_date = pd.to_datetime(df["Time"]).min()
-    end_date = pd.Timestamp.today().normalize()
-    df["Time"] = pd.to_datetime(df["Time"])
-    
-    for index, transaction in  df.iterrows():
-        type = transaction['Type']
-        amount = transaction['Amount']
-        ticker = transaction['Ticker']
-        
-            
-        if type in dividend_types:
-            total_dividends += amount
-            time_year = transaction['Time'].year
-
-            if time_year not in yearly_amounts:
-                yearly_amounts[time_year] = 0
-            yearly_amounts[time_year] = yearly_amounts[time_year] + amount
-
-            if ticker not in company_amounts:
-                company_amounts[ticker] = 0
-            company_amounts[ticker] = company_amounts[ticker] + amount
-
-    plot_dividends(yearly_amounts, company_amounts)
-    return
 
