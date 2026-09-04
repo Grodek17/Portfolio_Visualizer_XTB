@@ -3,7 +3,7 @@
 
 import sys
 import pandas as pd
-from dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS, XTB_REPORT_SHEET_NUMBER_DICT
+from data.dictionary import XTB_TO_YAHOO, TICKER_EXCEPTIONS, XTB_REPORT_SHEET_NUMBER_DICT
 from typing import Literal
 
 #returns single ticker from your portfolio or all of them in form of a list

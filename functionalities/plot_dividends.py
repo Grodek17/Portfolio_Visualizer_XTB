@@ -5,7 +5,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from xtb_reader import Read_XTB_File
+from helper_functions.xtb_reader import Read_XTB_File
 
 
 

@@ -4,11 +4,11 @@
 
 import pandas as pd
 
-from xtb_reader import Read_XTB_File, Select_Ticker
+from helper_functions.xtb_reader import Read_XTB_File, Select_Ticker
 
-from asset_class import Asset
+from classes.asset_class import Asset
 
-from constants import URL
+from data.constants import URL
 
 
 #calculates percentage change of asset value in given time interval, might not be full calendar interval since market closures
