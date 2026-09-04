@@ -74,3 +74,6 @@ class Asset:
 
     def get_yahoo_ticker(self):
         return self.yahoo_ticker
+
+    def get_price_df(self):
+        return self.price_df

@@ -25,3 +25,9 @@ TICKER_EXCEPTIONS = {
 }
 
 BENCHMARK_XTB_TICKERS = ['SXR8.DE', 'ETFBW20TR.PL']
+
+XTB_REPORT_SHEET_NUMBER_DICT = {
+    'Closed Positions' : 0,
+    'Cash Operations' : 1,
+    'Open Positions' : 2
+}
