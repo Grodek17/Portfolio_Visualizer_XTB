@@ -3,11 +3,11 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from xtb_reader import Read_XTB_File, Select_Ticker
+from helper_functions.xtb_reader import Read_XTB_File, Select_Ticker
 
-from asset_class import Asset
+from classes.asset_class import Asset
 
-from constants import URL
+from data.constants import URL
 
 
 #returns chart of company value over time with buy points

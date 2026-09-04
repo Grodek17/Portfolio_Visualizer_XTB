@@ -3,7 +3,7 @@ import pandas as pd
 
 #TODO: when this will become main method for gathering Yf data, update ticker might become "insider" method of Asset class
 #TODO: error handling for pulling nonexistent "future data", nonexistent past data etc
-from xtb_reader import updateTicker
+from helper_functions.xtb_reader import updateTicker
 
 # Asset Class will contain information about asset such as name, ticker etc. and a dataFrame with all closing values in given period of time
 # constructor will need XTB ticker, and timeframe for download

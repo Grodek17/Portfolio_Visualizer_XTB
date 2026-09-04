@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import yfinance as yf
 import sys
 
-from dictionary import CURRENCY_TICKERS, BENCHMARK_XTB_TICKERS
+from data.dictionary import CURRENCY_TICKERS, BENCHMARK_XTB_TICKERS
 
-from asset_class import Asset
-from position_class import Position
-from xtb_reader import Read_XTB_File, updateTicker
+from classes.asset_class import Asset
+from classes.position_class import Position
+from helper_functions.xtb_reader import Read_XTB_File, updateTicker
 
 
 

@@ -3,13 +3,13 @@
 
 import sys
 
-from benchmark_comparison import portfolio_benchmark
-from plot_dividends import show_dividends_yearly
-from buy_sell_graph_function import CreateBuySellGraph
-from percentage_change_function import Check_Price_Changes
-from percentage_share import show_asset_percentage_share
+from functionalities.benchmark_comparison import portfolio_benchmark
+from functionalities.plot_dividends import show_dividends_yearly
+from functionalities.buy_sell_graph_function import CreateBuySellGraph
+from functionalities.percentage_change_function import Check_Price_Changes
+from functionalities.percentage_share import show_asset_percentage_share
 
-from constants import URL
+from data.constants import URL
 
 def main_menu():
     while(True):

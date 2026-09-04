@@ -6,9 +6,9 @@
 
 import matplotlib.pyplot as plt
 
-from position_class import Position
-from xtb_reader import Read_XTB_File
-from constants import URL
+from classes.position_class import Position
+from helper_functions.xtb_reader import Read_XTB_File
+from data.constants import URL
 
 # plotting helper function
 def plot_percentage_share(portfolio_df):
