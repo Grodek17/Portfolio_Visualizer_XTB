@@ -3,11 +3,11 @@
 
 import sys
 
-from functionalities.benchmark_comparison import portfolio_benchmark
-from functionalities.plot_dividends import show_dividends_yearly
-from functionalities.buy_sell_graph_function import CreateBuySellGraph
-from functionalities.percentage_change_function import Check_Price_Changes
-from functionalities.percentage_share import show_asset_percentage_share
+from features.benchmark_comparison import portfolio_benchmark
+from features.plot_dividends import show_dividends_yearly
+from features.buy_sell_graph_function import CreateBuySellGraph
+from features.percentage_change_function import Check_Price_Changes
+from features.percentage_share import show_asset_percentage_share
 
 from data.constants import URL
 
