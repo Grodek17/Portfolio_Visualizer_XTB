@@ -3,6 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import yfinance as yf
 import sys
+import matplotlib.dates as mdates
 
 from data.dictionary import CURRENCY_TICKERS, BENCHMARK_XTB_TICKERS
 
@@ -102,6 +103,45 @@ def plot_benchmarks(returns_df):
     fig.tight_layout()
 
     plt.show()
+
+
+# Plots portfolio monetary value compared to money invested
+def plot_portfolio_value(value_df):
+    data = value_df.copy()
+    data["Date"] = pd.to_datetime(data["Date"])
+    data = data.sort_values("Date")
+
+    fig, ax = plt.subplots(figsize=(12, 6))
+
+    ax.plot(
+        data["Date"],
+        data["portfolio_value"],
+        label="portfolio_value",
+        color="tab:blue",
+        linewidth=2,
+    )
+    ax.plot(
+        data["Date"],
+        data["net_investments"],
+        label="net_investments",
+        color="green"
+    )
+
+    locator = mdates.AutoDateLocator()
+    ax.xaxis.set_major_locator(locator)
+    ax.xaxis.set_major_formatter(mdates.ConciseDateFormatter(locator))
+
+    ax.set(
+        title="Portfolio value vs net investments",
+        xlabel="Date",
+        ylabel="Value [PLN]"
+    )
+    ax.grid(alpha=0.25)
+    ax.legend()
+    fig.tight_layout()
+
+    plt.show()
+    return fig, ax
 
 
 #returns {ticker : asset_class} disctionary for benchmarks like SP500
@@ -211,9 +251,12 @@ def update_benchmark_positions(invested_today, benchmarks_positions, benchmarks_
 
 # calculates portfolio and benchmark return rates each day
 # returns a dictionary { day : date, portfolio : return_rate, bench_1 : bench_rr, ...}
-def calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchmarks_data, exchange_rates, total_invested, positions, positions_data):
+def calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchmarks_data, exchange_rates, total_invested, positions, positions_data, daily_value):
     #assign date to dictionary
     daily_returns['Date'] = day
+
+    daily_value['Date'] = day
+    daily_value['net_investments'] = total_invested
 
     #PORTFOLIO
     today_portfolio_value = 0
@@ -225,6 +268,9 @@ def calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchm
     
         position_value_this_day = position_volume * position_price_most_recent * position_exchange_rate
         today_portfolio_value = today_portfolio_value + position_value_this_day
+
+    #save portfolio value in PLN
+    daily_value['portfolio_value'] = today_portfolio_value
                  
     this_day_return_rate_in_percent = (((today_portfolio_value)/(total_invested))-1) 
     return_rate_portfolio = this_day_return_rate_in_percent
@@ -244,7 +290,7 @@ def calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchm
 
     
 
-    return daily_returns
+    return daily_returns, daily_value
 
             
     
@@ -258,7 +304,9 @@ def portfolio_benchmark(url):
     benchmarks_data = {}                                            #stores {yahoo_ticker : class storing asset info}
     exchange_rates = {}                                             #stores {currency_ticker : exchange_rate series}
     daily_returns = {}                                              #stores { day : date, portfolio : return_rate, bench_1 : bench_rr, ...}
+    daily_value = {}                                                #stores { day : date, net_investments, portfolio_value}
     returns_list = []                                               #stores list of daily_returns
+    portfolio_value_list = []                                       #stores list of daily_value
     total_dividends = 0
     total_invested = 0
 
@@ -275,6 +323,7 @@ def portfolio_benchmark(url):
     print("calculating daily returns, it might take up to few minutes")
     for day in pd.date_range(start=start_date, end=end_date, freq="D"):
         daily_returns = {}      #clear dictionary for current day
+        daily_value = {}        #clear daily value dict
         invested_today = 0
         day = day.strftime('%Y-%m-%d') 
 
@@ -287,10 +336,14 @@ def portfolio_benchmark(url):
         #parallely buy benchmarks
         benchmarks_positions = update_benchmark_positions(invested_today, benchmarks_positions, benchmarks_data, day, exchange_rates)
         
-        daily_returns = calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchmarks_data, exchange_rates, total_invested, positions, positions_data)
+        daily_returns, daily_value = calculate_benchmark_returns(day, daily_returns, benchmarks_positions, benchmarks_data, exchange_rates, total_invested, positions, positions_data, daily_value)
         returns_list.append(daily_returns)
+        portfolio_value_list.append(daily_value)
 
     returns_df = pd.DataFrame(returns_list)
+    value_df = pd.DataFrame(portfolio_value_list)
+
+    print(value_df.head(10))
 
     #TODO: transform column names to long names of companies
     # useful: first two columns are date and portfolio, rest can be found with Asset classes
@@ -298,6 +351,7 @@ def portfolio_benchmark(url):
     # check if modularity can be used to calculate for example percentage holding of each asset in portfolio
 
     plot_benchmarks(returns_df)
+    plot_portfolio_value(value_df)
 
 
 
