@@ -54,9 +54,6 @@ def test_calculate_benchmark_returns():
         daily_value={},
     )
 
-    print(returns)
-    print("----")
-    print(values)
 
     # ASSERT 
     assert values['portfolio_value'] == 1200
