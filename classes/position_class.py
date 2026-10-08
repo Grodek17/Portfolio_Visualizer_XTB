@@ -2,6 +2,7 @@
 # It does not store historical prices and metadata (name, currency) - see Asset Class
 # add_pucharse method automatically calculates new average price
 # price must be given in the same currency every time
+# price is given in original currency (Volkswagen -> EUR, Intel -> USD)
 
 class Position:
     def __init__(self, ticker):
