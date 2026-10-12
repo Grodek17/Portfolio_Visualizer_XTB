@@ -27,9 +27,13 @@ def read_cash_operations(url):
 #helper function, splits comment in transaction info from "OPEN BUY 0.7101/1.7101 @ 58.450" to 0.7101 @ 58.450
 def parse_open_transaction(comment):
     parts = comment.split()
-    volume_text = parts[2]
+
+    at_index = parts.index("@")
+
+    volume_text = parts[at_index - 1]
     bought_volume = float(volume_text.split("/")[0])
-    price = float(parts[4])
+    price = float(parts[at_index + 1])
+
 
     return bought_volume, price
 
