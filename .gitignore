@@ -22,3 +22,7 @@ htmlcov/
 # Operating system
 .DS_Store
 Thumbs.db
+
+# Private financial reports
+*.xlsx
+*.xls
