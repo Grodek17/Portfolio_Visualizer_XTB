@@ -1,1 +1,3 @@
-URL = "C:\\Users\\grode\\Desktop\\IKE_52356141_2006-01-01_2026-10-12.xlsx"
+# name of xtb report file in main project directory
+# .xlsx file is not tracked by git
+URL = "portfolio.xlsx"
